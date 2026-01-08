@@ -1,0 +1,7 @@
+{
+  "name": "DreamColor",
+  "description": "Turn your favorite photos and ideas into magical coloring pages instantly using AI.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
