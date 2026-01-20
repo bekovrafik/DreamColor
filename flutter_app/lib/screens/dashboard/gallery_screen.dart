@@ -56,7 +56,27 @@ class _GalleryScreenState extends State<GalleryScreen> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => context.push('/new'),
+                    onPressed: () {
+                      final freeCheck = appProvider.checkFreeLimit();
+                      if (appProvider.credits > 0 ||
+                          freeCheck['allowed'] == true ||
+                          appProvider.isPaidUser) {
+                        context.push('/new');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              "Daily limit reached! Wait ${freeCheck['waitTimeStr']} or upgrade.",
+                            ),
+                            action: SnackBarAction(
+                              label: 'Upgrade',
+                              onPressed: () => context.push('/billing'),
+                            ),
+                          ),
+                        );
+                        context.push('/billing');
+                      }
+                    },
                     icon: const Icon(Icons.add),
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
@@ -173,7 +193,29 @@ class _GalleryScreenState extends State<GalleryScreen> {
                             Padding(
                               padding: const EdgeInsets.only(top: 16),
                               child: ElevatedButton.icon(
-                                onPressed: () => context.push('/new'),
+                                onPressed: () {
+                                  final freeCheck = appProvider
+                                      .checkFreeLimit();
+                                  if (appProvider.credits > 0 ||
+                                      freeCheck['allowed'] == true ||
+                                      appProvider.isPaidUser) {
+                                    context.push('/new');
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          "Daily limit reached! Wait ${freeCheck['waitTimeStr']} or upgrade.",
+                                        ),
+                                        action: SnackBarAction(
+                                          label: 'Upgrade',
+                                          onPressed: () =>
+                                              context.push('/billing'),
+                                        ),
+                                      ),
+                                    );
+                                    context.push('/billing');
+                                  }
+                                },
                                 icon: const Icon(Icons.brush),
                                 label: const Text('Create Book'),
                                 style: ElevatedButton.styleFrom(

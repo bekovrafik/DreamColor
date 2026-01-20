@@ -246,7 +246,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => context.push('/login'),
+                          onTap: () {
+                            context.push('/login');
+                          },
                           child: Text(
                             'Log in',
                             style: GoogleFonts.outfit(
@@ -259,7 +261,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     TextButton(
-                      onPressed: () => context.push('/forgot-password'),
+                      onPressed: () {
+                        context.push('/forgot-password');
+                      },
                       child: Text(
                         'Forgot Password?',
                         style: GoogleFonts.outfit(
@@ -306,15 +310,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: GoogleFonts.outfit(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey.shade400
-                : Colors.grey.shade600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           prefixIcon: Icon(
             icon,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey.shade400
-                : Colors.grey.shade600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
@@ -343,19 +343,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : Colors.transparent,
       ),
       child: InkWell(
-        onTap: () async {
-          try {
-            await Provider.of<AppProvider>(
-              context,
-              listen: false,
-            ).signInWithGoogle();
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Google Sign-In failed: $e')),
-              );
-            }
-          }
+        onTap: () {
+          _onGoogleSignIn();
         },
         borderRadius: BorderRadius.circular(28),
         child: Row(
@@ -409,5 +398,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     );
+  }
+
+  void _onGoogleSignIn() async {
+    try {
+      await Provider.of<AppProvider>(context, listen: false).signInWithGoogle();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Google Sign-In failed: $e')));
+      }
+    }
   }
 }

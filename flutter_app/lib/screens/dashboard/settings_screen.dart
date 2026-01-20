@@ -148,7 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   fontWeight: FontWeight.w500,
                                   color: appProvider.isPaidUser
                                       ? Colors.purple
-                                      : Colors.grey,
+                                      : Theme.of(context).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -321,7 +321,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               : 'Upgrade to Pro',
                           const Color(0xFFF59E0B),
                           () async {
-                            context.push('/subscription');
+                            context.push('/billing');
                           },
                         ),
                         Divider(
@@ -451,10 +451,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
 
                   const SizedBox(height: 20),
-                  const Center(
+                  Center(
                     child: Text(
                       'Version 1.0.2',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 40),
@@ -507,7 +510,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title,
         style: GoogleFonts.outfit(fontWeight: FontWeight.w600, fontSize: 16),
       ),
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing:
+          trailing ??
+          Icon(
+            Icons.chevron_right,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
       onTap: onTap,
     );
   }

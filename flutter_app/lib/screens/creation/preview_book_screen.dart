@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -26,10 +27,76 @@ class _PreviewBookScreenState extends State<PreviewBookScreen> {
   void initState() {
     super.initState();
     final provider = Provider.of<AppProvider>(context, listen: false);
-    _images = provider.generatedImages;
+    _images = List.from(provider.generatedImages);
 
     // Check refill logic from extra
     // if (widget.extra?['showRefill'] == true) ... show dialog or snackbar
+  }
+
+  Future<void> _remixPage(int index) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    if (!provider.canRemix) {
+      context.push('/billing');
+      return;
+    }
+
+    if (provider.credits < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Not enough credits for a Remix!")),
+      );
+      context.push('/billing');
+      return;
+    }
+
+    setState(() => _isSaving = true); // Using as general loading
+
+    try {
+      // Atomic Credit Deduction
+      final userRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(provider.user!.uid);
+      final success = await FirebaseFirestore.instance.runTransaction((
+        transaction,
+      ) async {
+        final snapshot = await transaction.get(userRef);
+        if (!snapshot.exists) return false;
+
+        final currentCredits = snapshot.data()?['credits'] ?? 0;
+        if (currentCredits < 1) return false;
+
+        transaction.update(userRef, {'credits': currentCredits - 1});
+        return true;
+      });
+
+      if (!success) {
+        throw Exception("Insufficient credits for a Remix.");
+      }
+
+      // Mock Remix Generation (In real app, this would trigger a Cloud Function or API)
+      await Future.delayed(const Duration(seconds: 3));
+
+      // Update the image list
+      setState(() {
+        _images[index] =
+            "https://lh3.googleusercontent.com/aida-public/AB6AXuCHY9zyoGojgs8BmYDronLjg-Dwr_ggGeee2vKsKBPJATY4Ya9btXBl6UYXvWNRE1tk6Vbyzqtt3BMS0U8CwtuxWQ35JO9nYhpZlwbRjJo4EMpq94I37Z_PAyS56It6wXJJm6Elba-o1SyDDy9i1fTteJWD16d4a0o1YfnCsRCw8oDaR1taeWKhwD5QERa0OR8_gQhhKMZLdH3eUiZ28IgkebOjZc6z0CfLnTh2fOEoaSAYx25NFa_JJo8simEeqwTcIKwtlUcEkg0";
+      });
+
+      provider.setGeneratedImages(_images);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Magic Remix complete! ✨")),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Remix failed: $e")));
+      }
+    } finally {
+      setState(() => _isSaving = false);
+    }
   }
 
   Future<void> _saveBook() async {
@@ -90,8 +157,18 @@ class _PreviewBookScreenState extends State<PreviewBookScreen> {
   }
 
   Future<void> _exportPdf() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    if (!provider.canExportPdf) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Upgrade to remove watermark and export!"),
+        ),
+      );
+      return;
+    }
+
     final pdf = pw.Document();
-    // final provider = Provider.of<AppProvider>(context, listen: false); // Unused
+    // ...
 
     for (var imgUrl in _images) {
       Uint8List? imageBytes;
@@ -214,31 +291,75 @@ class _PreviewBookScreenState extends State<PreviewBookScreen> {
                 controller: PageController(viewportFraction: 0.85),
                 itemBuilder: (context, index) {
                   final img = _images[index];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 24,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                  final provider = Provider.of<AppProvider>(context);
+                  return Column(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: img.startsWith('http')
+                                    ? Image.network(img, fit: BoxFit.contain)
+                                    : Image.memory(
+                                        base64Decode(img.split(',').last),
+                                        fit: BoxFit.contain,
+                                      ), // Handle base64
+                              ),
+                              if (!provider.isPaidUser)
+                                Center(
+                                  child: Opacity(
+                                    opacity: 0.3,
+                                    child: Transform.rotate(
+                                      angle: -0.5,
+                                      child: Text(
+                                        'DREAMCOLOR PREVIEW',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: img.startsWith('http')
-                          ? Image.network(img, fit: BoxFit.contain)
-                          : Image.memory(
-                              base64Decode(img.split(',').last),
-                              fit: BoxFit.contain,
-                            ), // Handle base64
-                    ),
+                      ),
+                      if (provider.isPaidUser)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: TextButton.icon(
+                            onPressed: _isSaving
+                                ? null
+                                : () => _remixPage(index),
+                            icon: const Icon(Icons.refresh, size: 20),
+                            label: const Text("Remix this page (1 Credit)"),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                    ],
                   );
                 },
               ),

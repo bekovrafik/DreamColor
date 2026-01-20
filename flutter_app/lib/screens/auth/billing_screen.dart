@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../providers/app_provider.dart';
 import '../../services/purchase_service.dart';
 
 class BillingScreen extends StatelessWidget {
@@ -46,32 +48,54 @@ class BillingScreen extends StatelessWidget {
                   _buildPlanCard(
                     context,
                     title: 'Single Adventure',
-                    price: r'$2.99',
-                    credits: '6 Credits',
-                    description: 'Perfect for 1 Full Book',
+                    price: r'$3.99',
+                    credits: '10 Credits',
+                    description: 'Perfect for 1 Full Book + extras',
                     features: [
-                      'Photo Uploads',
+                      'Photo-to-Sketch Unlocked',
                       'Print-Ready PDF Export',
                       'Access to all Themes',
-                      'Unlimited Gallery Space',
+                      'Remix Feature Enabled',
                     ],
-                    onPressed: () =>
-                        _handlePurchase(context, 'single_adventure'),
+                    onPressed: () => _handlePurchase(
+                      context,
+                      PurchaseService.productSingleAdventure,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   _buildPlanCard(
                     context,
                     title: 'Explorer Pack',
-                    price: r'$29.99',
-                    credits: '30 Credits',
-                    description: 'Perfect for 5 Full Books',
+                    price: r'$14.99',
+                    credits: '50 Credits',
+                    description: 'Best Value - Perfect for ~8 Books',
                     features: [
                       'Everything in Single Adventure',
-                      'Marked as "Most Popular"',
-                      'Best Value per Credit',
+                      'Marked as "Best Value"',
+                      '25% bulk discount',
                     ],
                     isPopular: true,
-                    onPressed: () => _handlePurchase(context, 'explorer_pack'),
+                    onPressed: () => _handlePurchase(
+                      context,
+                      PurchaseService.productExplorerPack,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildPlanCard(
+                    context,
+                    title: 'Party Master',
+                    price: r'$24.99',
+                    credits: '100 Credits',
+                    description: 'Perfect for Parties & Classrooms',
+                    features: [
+                      'Everything in Explorer Pack',
+                      'Max Bulk Value',
+                      '50% bulk discount',
+                    ],
+                    onPressed: () => _handlePurchase(
+                      context,
+                      PurchaseService.productPartyMaster,
+                    ),
                   ),
                   const SizedBox(height: 32),
                   const PlanComparisonTable(),
@@ -86,17 +110,20 @@ class BillingScreen extends StatelessWidget {
 
   void _handlePurchase(BuildContext context, String productId) async {
     final purchaseService = PurchaseService();
-    final products = purchaseService.products;
-    final product = products.isNotEmpty
-        ? products.firstWhere(
-            (p) => p.id == productId,
+    final packages = purchaseService.packages;
+    final package = packages.isNotEmpty
+        ? packages.firstWhere(
+            (p) => p.storeProduct.identifier.contains(productId),
             orElse: () => throw Exception('Product not found'),
           )
         : null;
 
     try {
-      if (product != null) {
-        await purchaseService.buyConsumable(product);
+      if (package != null) {
+        await Provider.of<AppProvider>(
+          context,
+          listen: false,
+        ).buyCredits(package);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -152,7 +179,7 @@ class BillingScreen extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'MOST POPULAR',
+                'BEST VALUE',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.outfit(
                   color: Colors.white,
@@ -199,7 +226,10 @@ class BillingScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   description,
-                  style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey),
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const Divider(height: 32),
                 ...features.map(
@@ -268,15 +298,16 @@ class PlanComparisonTable extends StatelessWidget {
           style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        _buildRow('Daily Limit', '1 Page', 'Unlimited'),
-        _buildRow('Themes', 'Space Only', 'All Themes'),
-        _buildRow('Photo Upload', 'Locked', 'Unlocked'),
-        _buildRow('PDF Export', 'Locked', 'Unlocked'),
+        _buildRow(context, 'Daily Limit', '1 Credit', 'Unlimited'),
+        _buildRow(context, 'Themes', 'Space Only', 'All Themes'),
+        _buildRow(context, 'Photo Upload', 'Locked', 'Unlocked'),
+        _buildRow(context, 'PDF Export', 'Watermarked', 'High-Res'),
+        _buildRow(context, 'Remix Feature', 'Locked', 'Unlocked'),
       ],
     );
   }
 
-  Widget _buildRow(String feature, String free, String paid) {
+  Widget _buildRow(BuildContext ctx, String feature, String free, String paid) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -291,7 +322,10 @@ class PlanComparisonTable extends StatelessWidget {
           Expanded(
             child: Text(
               free,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           Expanded(

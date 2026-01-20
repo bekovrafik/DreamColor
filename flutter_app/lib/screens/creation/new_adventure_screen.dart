@@ -59,13 +59,18 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
     final provider = Provider.of<AppProvider>(context, listen: false);
 
     if (provider.uploadedImage != null) {
-      if (!provider.isPaidUser || provider.credits < 6) {
+      if (!provider.isPaidUser) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              "You need at least 6 credits for a custom photo adventure!",
-            ),
+            content: Text("Unlock Premium to use your own photos!"),
           ),
+        );
+        context.push('/billing');
+        return;
+      }
+      if (provider.credits < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("You need 6 credits for a full book!")),
         );
         context.push('/billing');
         return;
@@ -75,15 +80,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
     if (provider.credits >= 6) {
       context.push('/chat');
     } else {
-      if (provider.credits > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("You need 6 credits for a full book!")),
-        );
-        context.push('/billing');
-        return;
-      }
-
-      // Free limit check
+      // Free limit check for single page
       final check = provider.checkFreeLimit();
       if (!check['allowed']) {
         setState(() {
@@ -227,10 +224,9 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                         decoration: InputDecoration(
                           hintText: "e.g. Leo, Maya...",
                           hintStyle: TextStyle(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                ? Colors.grey.shade400
-                                : Colors.grey.shade600,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
                           ),
                           filled: true,
                           fillColor: Theme.of(context).cardColor,
@@ -298,15 +294,13 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                                   color: isSelected
                                       ? Colors.white
                                       : (isLocked
-                                            ? Colors.grey
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant
                                             : Theme.of(
                                                 context,
                                               ).colorScheme.onSurface),
                                   fontWeight: FontWeight.bold,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
                                 ),
                                 deleteIcon: isLocked
                                     ? const Icon(Icons.lock, size: 14)
@@ -326,7 +320,9 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        enabled: appProvider.canAccessAllThemes,
+                        enabled:
+                            appProvider.isPaidUser &&
+                            appProvider.canAccessAllThemes,
                         onChanged: (val) => appProvider.setTheme(val),
                         decoration: InputDecoration(
                           hintText: appProvider.isPaidUser
@@ -371,6 +367,11 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                                 : "Personalize with AI",
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.bold,
+                              color: !appProvider.isPaidUser
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant
+                                  : Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                           Container(
@@ -500,9 +501,11 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                                       !appProvider.isPaidUser
                                           ? "Unlock to turn photos into coloring pages!"
                                           : "We'll turn it into a coloring page!",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.grey,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                     ),
                                   ],

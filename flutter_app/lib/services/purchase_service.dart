@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class PurchaseService with ChangeNotifier {
   static final PurchaseService _instance = PurchaseService._internal();
@@ -9,100 +11,54 @@ class PurchaseService with ChangeNotifier {
 
   PurchaseService._internal();
 
-  final InAppPurchase _iap = InAppPurchase.instance;
-  bool _available = false;
-  List<ProductDetails> _products = [];
+  List<Package> _packages = [];
 
-  // Product IDs
+  // Product IDs (Constants to match RevenueCat Package Identifiers if possible, or just for UI mapping)
+  // Ideally, configure RevenueCat packages to have identifiers that help us map, or we just trust the Offering order.
+  // For now, let's assume the Offering has these packages.
   static const String productExplorerPack = 'explorer_pack';
   static const String productSingleAdventure = 'single_adventure';
+  static const String productPartyMaster = 'party_master';
 
-  static const List<String> _kProductIds = <String>[
-    productExplorerPack,
-    productSingleAdventure,
-  ];
+  List<Package> get packages => _packages;
 
-  /// Stream of purchase updates
-  late StreamSubscription<List<PurchaseDetails>> _subscription;
-  Function(PurchaseDetails)? _onPurchaseCompleted;
+  Future<void> init() async {
+    await Purchases.setLogLevel(LogLevel.debug);
 
-  bool get isAvailable => _available;
-  List<ProductDetails> get products => _products;
-
-  Future<void> init({Function(PurchaseDetails)? onPurchaseCompleted}) async {
-    _onPurchaseCompleted = onPurchaseCompleted;
-    final Stream<List<PurchaseDetails>> purchaseUpdated = _iap.purchaseStream;
-    _subscription = purchaseUpdated.listen(
-      (List<PurchaseDetails> purchaseDetailsList) {
-        _listenToPurchaseUpdated(purchaseDetailsList);
-      },
-      onDone: () {
-        _subscription.cancel();
-      },
-      onError: (Object error) {
-        // handle error
-      },
-    );
-    await _initStore();
-  }
-
-  Future<void> _initStore() async {
-    _available = await _iap.isAvailable();
-    if (_available) {
-      await _fetchProducts();
+    String? apiKey;
+    if (Platform.isAndroid) {
+      apiKey = dotenv.env['REVENUECAT_ANDROID_KEY'];
+    } else if (Platform.isIOS) {
+      apiKey = dotenv.env['REVENUECAT_IOS_KEY'];
     }
-    notifyListeners();
-  }
 
-  Future<void> _fetchProducts() async {
-    final ProductDetailsResponse response = await _iap.queryProductDetails(
-      _kProductIds.toSet(),
-    );
-    if (response.error == null) {
-      _products = response.productDetails;
-      notifyListeners();
+    if (apiKey != null) {
+      PurchasesConfiguration configuration = PurchasesConfiguration(apiKey);
+      await Purchases.configure(configuration);
+      await _fetchOfferings();
     }
   }
 
-  Future<void> _listenToPurchaseUpdated(
-    List<PurchaseDetails> purchaseDetailsList,
-  ) async {
-    for (final PurchaseDetails purchaseDetails in purchaseDetailsList) {
-      if (purchaseDetails.status == PurchaseStatus.pending) {
-        // Show pending UI if needed
-      } else {
-        if (purchaseDetails.status == PurchaseStatus.error) {
-          // Handle error
-        } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-            purchaseDetails.status == PurchaseStatus.restored) {
-          if (_onPurchaseCompleted != null) {
-            _onPurchaseCompleted!(purchaseDetails);
-          }
-        }
-
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _iap.completePurchase(purchaseDetails);
-        }
+  Future<void> _fetchOfferings() async {
+    try {
+      Offerings offerings = await Purchases.getOfferings();
+      if (offerings.current != null &&
+          offerings.current!.availablePackages.isNotEmpty) {
+        _packages = offerings.current!.availablePackages;
+        notifyListeners();
       }
+    } catch (e) {
+      debugPrint("Error fetching offerings: $e");
     }
   }
 
-  /// Purchase a consumable
-  Future<void> buyConsumable(ProductDetails productDetails) async {
-    final PurchaseParam purchaseParam = PurchaseParam(
-      productDetails: productDetails,
-    );
-
-    // For consumable, we assume verification happens in listener
-    // Note: 'autoConsume' logic differs by platform, sticking to standard flow
-    if (_kProductIds.contains(productDetails.id)) {
-      await _iap.buyConsumable(purchaseParam: purchaseParam);
+  Future<CustomerInfo> purchasePackage(Package package) async {
+    try {
+      CustomerInfo customerInfo = await Purchases.purchasePackage(package);
+      return customerInfo;
+    } catch (e) {
+      debugPrint("Purchase error: $e");
+      rethrow;
     }
-  }
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
   }
 }

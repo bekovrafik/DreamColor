@@ -2,15 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'dart:convert';
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../providers/app_provider.dart';
 
-const String _apiKey = 'YOUR_API_KEY_HERE';
-
 class GenerationProgressScreen extends StatefulWidget {
-  const GenerationProgressScreen({super.key});
+  final Map<String, dynamic>? extra; // Expect { 'draftId': String }
+  const GenerationProgressScreen({super.key, this.extra});
 
   @override
   State<GenerationProgressScreen> createState() =>
@@ -19,122 +17,91 @@ class GenerationProgressScreen extends StatefulWidget {
 
 class _GenerationProgressScreenState extends State<GenerationProgressScreen> {
   double _progress = 0.0;
-  String _statusText = "Planning your book...";
   String? _error;
-  bool _isGenerating = false;
+  String _statusText = "Preparing your brushes...";
+  StreamSubscription<DocumentSnapshot>? _draftSubscription;
+  String? _draftId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startGeneration();
-    });
+    _draftId = widget.extra?['draftId'];
+    if (_draftId != null) {
+      _subscribeToDraft();
+    } else {
+      setState(() {
+        _error = "No generation draft found.";
+      });
+    }
   }
 
-  Future<void> _startGeneration() async {
-    if (_isGenerating) return;
-    setState(() {
-      _isGenerating = true;
-      _progress = 0.1;
-      _statusText = "Planning your book...";
-    });
-
+  void _subscribeToDraft() {
     final provider = Provider.of<AppProvider>(context, listen: false);
+    final user = provider.user;
+    if (user == null) return;
 
-    try {
-      final isPaidRun = provider.credits >= 6;
-      final pageCount = isPaidRun ? 6 : 1;
+    _draftSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('drafts')
+        .doc(_draftId)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            if (!mounted) return;
+            if (!snapshot.exists) {
+              setState(() => _error = "Draft lost in the magic cloud.");
+              return;
+            }
 
-      // 1. Plan Scenes
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
-      final fullContext = provider.chatHistory
-          .map(
-            (m) => "${m.role == 'user' ? 'Parent' : 'Idea Helper'}: ${m.text}",
-          )
-          .join('\n');
+            final data = snapshot.data() as Map<String, dynamic>;
+            final status = data['status'] ?? 'pending';
+            final List<dynamic> pages = data['pages'] ?? [];
+            final List<dynamic> scenes = data['scenes'] ?? [];
+            final sceneCount = scenes.isNotEmpty ? scenes.length : 6;
 
-      final planPrompt =
-          """
-      You are creating a $pageCount-page coloring book for a child named ${provider.childName}. Theme: ${provider.theme}. 
-      Previous conversation: $fullContext. 
-      Task: Generate $pageCount distinct, creative, and detailed scene descriptions.
-      ${pageCount == 6 ? "One of these must be a cover page design." : ""}
-      If an image was uploaded, assume it is the main character and incorporate it into the scenes.
-      Return ONLY a valid JSON array of strings. Example: ["scene 1..."].
-      """;
+            setState(() {
+              _progress = pages.length / sceneCount;
+              _statusText = _getStatusText(status, pages.length, sceneCount);
+            });
 
-      final planResponse = await model.generateContent([
-        Content.text(planPrompt),
-      ]);
-      final planText = planResponse.text
-          ?.replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-
-      if (planText == null) throw "Failed to plan scenes";
-
-      List<dynamic> scenes = [];
-      try {
-        scenes = jsonDecode(planText);
-      } catch (e) {
-        // Fallback if JSON parsing fails - simple split or regex
-        scenes = [planText]; // Very rough fallback
-      }
-
-      if (scenes.isEmpty) throw "No scenes planned";
-
-      // 2. Generate Images
-      // final imageModel = GenerativeModel(
-      //   model: 'gemini-pro-vision',
-      //   apiKey: _apiKey,
-      // );
-
-      // The React code calls 'gemini-3-pro-image-preview'.
-      // Current package 'google_generative_ai' mainly supports text/multimodal-to-text.
-      // Image generation usually requires different endpoint or specific model capability not fully exposed in standard gemini-pro.
-      // However, for this conversion, we will Simulate image generation or rely on the fact that if we had the key for the preview model it might work.
-      // Since we don't have the real model access here, we will mock the "Success" with placeholders.
-
-      List<String> generatedImages = [];
-
-      for (int i = 0; i < scenes.length; i++) {
-        setState(() {
-          _statusText = "Drawing page ${i + 1} of ${scenes.length}...";
-          _progress = 0.2 + ((i / scenes.length) * 0.7);
-        });
-
-        // Mock generation delay
-        await Future.delayed(const Duration(seconds: 2));
-
-        // Mock Image (Placeholder)
-        // In real app, call API here.
-        generatedImages.add(
-          "https://lh3.googleusercontent.com/aida-public/AB6AXuCHY9zyoGojgs8BmYDronLjg-Dwr_ggGeee2vKsKBPJATY4Ya9btXBl6UYXvWNRE1tk6Vbyzqtt3BMS0U8CwtuxWQ35JO9nYhpZlwbRjJo4EMpq94I37Z_PAyS56It6wXJJm6Elba-o1SyDDy9i1fTteJWD16d4a0o1YfnCsRCw8oDaR1taeWKhwD5QERa0OR8_gQhhKMZLdH3eUiZ28IgkebOjZc6z0CfLnTh2fOEoaSAYx25NFa_JJo8simEeqwTcIKwtlUcEkg0",
+            if (status == 'completed' || pages.length == sceneCount) {
+              _finishGeneration(pages.cast<String>());
+            } else if (status == 'failed') {
+              setState(
+                () => _error =
+                    "Magic generation failed. Credits have been refunded.",
+              );
+            }
+          },
+          onError: (e) {
+            setState(() => _error = "Stream error: $e");
+          },
         );
-      }
+  }
 
-      setState(() {
-        _progress = 1.0;
-        _statusText = "Book complete!";
-      });
-
-      bool showRefill = false;
-      if (isPaidRun) {
-        if (provider.deductCredits(6)) {
-          if (provider.credits == 0) showRefill = true;
-        }
-      } else {
-        provider.recordFreeGeneration();
-      }
-
-      provider.setGeneratedImages(generatedImages);
-
-      if (mounted) {
-        context.go('/preview', extra: {'showRefill': showRefill});
-      }
-    } catch (e) {
-      setState(() => _error = "Oops! Something went wrong: $e");
+  String _getStatusText(String status, int count, int total) {
+    if (status == 'pending') return "Preparing your brushes...";
+    if (status == 'processing' || count < total) {
+      return "Painting page ${count + 1} of $total...";
     }
+    return "Finishing touches...";
+  }
+
+  void _finishGeneration(List<String> images) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    provider.setGeneratedImages(images);
+    _draftSubscription?.cancel();
+
+    if (mounted) {
+      context.go('/preview', extra: {'showRefill': provider.credits == 0});
+    }
+  }
+
+  @override
+  void dispose() {
+    _draftSubscription?.cancel();
+    super.dispose();
   }
 
   @override

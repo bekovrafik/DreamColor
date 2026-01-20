@@ -40,6 +40,7 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF460DF2),
           surface: const Color(0xFFFFFFFF), // surface-light
           onSurface: const Color(0xFF1E293B), // slate-900 (approx)
+          onSurfaceVariant: const Color(0xFF64748B), // slate-500
           brightness: Brightness.light,
         ),
         useMaterial3: true,
@@ -59,6 +60,7 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF460DF2),
           surface: const Color(0xFF1E1A2E), // surface-dark
           onSurface: const Color(0xFFFFFFFF),
+          onSurfaceVariant: const Color(0xFF94A3B8), // slate-400
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -71,7 +73,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: appProvider.darkMode ? ThemeMode.dark : ThemeMode.light,
-      routerConfig: router,
+      routerConfig: createRouter(appProvider),
     );
   }
 }

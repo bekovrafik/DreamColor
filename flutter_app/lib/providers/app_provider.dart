@@ -6,9 +6,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
 import '../models/book.dart';
+import '../models/preset.dart';
 import '../models/chat_message.dart';
 import '../services/purchase_service.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class AppProvider with ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -32,6 +33,7 @@ class AppProvider with ChangeNotifier {
   String? _uploadedImage;
   List<ChatMessage> _chatHistory = [];
   List<SavedBook> _savedBooks = [];
+  List<Preset> _presets = [];
   bool _isLoading = true;
 
   // Getters
@@ -46,12 +48,14 @@ class AppProvider with ChangeNotifier {
   String? get uploadedImage => _uploadedImage;
   List<ChatMessage> get chatHistory => _chatHistory;
   List<SavedBook> get savedBooks => _savedBooks;
+  List<Preset> get presets => _presets;
   bool get isLoading => _isLoading;
 
   // Permission Getters
   bool get canExportPdf => _isPaidUser;
   bool get canUploadPhotos => _isPaidUser;
   bool get canAccessAllThemes => _isPaidUser;
+  bool get canRemix => _isPaidUser;
 
   AppProvider() {
     _init();
@@ -63,13 +67,17 @@ class AppProvider with ChangeNotifier {
     // Load local prefs for simple settings like Theme which might be device specific
     _darkMode = _prefs?.getString('dreamcolor_theme') == 'dark';
 
+    // Global Data Fetch
+    fetchPresets();
+
     _authSubscription = _auth.authStateChanges().listen((user) {
       _user = user;
       _isLoading = false;
       if (user != null) {
         _subscribeToUserData(user.uid);
         _subscribeToUserBooks(user.uid);
-        PurchaseService().init(onPurchaseCompleted: _onPurchaseCompleted);
+        PurchaseService().init();
+        _setupPurchaseListener();
       } else {
         _clearUserData();
       }
@@ -105,11 +113,14 @@ class AppProvider with ChangeNotifier {
         .orderBy('date', descending: true)
         .snapshots()
         .listen((snapshot) {
-          _savedBooks = snapshot.docs.map((doc) {
-            final data = doc.data();
-            // Ensure ID matches doc ID if needed, or trust data
-            return SavedBook.fromJson({...data, 'id': doc.id});
-          }).toList();
+          _savedBooks = snapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                // Ensure ID matches doc ID if needed, or trust data
+                return SavedBook.fromJson({...data, 'id': doc.id});
+              })
+              .where((book) => !book.isDeleted)
+              .toList(); // Client-side soft delete filter
           notifyListeners();
         });
   }
@@ -205,51 +216,104 @@ class AppProvider with ChangeNotifier {
     // Local update happens via stream
   }
 
+  Future<void> fetchPresets() async {
+    try {
+      final snapshot = await _firestore.collection('presets').get();
+      _presets = snapshot.docs
+          .map(
+            (doc) => Preset.fromMap(doc.id, doc.data()),
+          ) // data() returns Map<String, dynamic>
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Error fetching presets: $e");
+    }
+  }
+
   Future<void> toggleDarkMode() async {
     _darkMode = !_darkMode;
     await _prefs?.setString('dreamcolor_theme', _darkMode ? 'dark' : 'light');
     notifyListeners();
   }
 
-  // IAP Callback Handler
-  void _onPurchaseCompleted(PurchaseDetails details) {
-    if (details.status == PurchaseStatus.purchased ||
-        details.status == PurchaseStatus.restored) {
-      if (details.productID == PurchaseService.productExplorerPack) {
-        purchaseCreditsInternal(30);
-      } else if (details.productID == PurchaseService.productSingleAdventure) {
-        purchaseCreditsInternal(6);
+  // RevenueCat Listener
+  void _setupPurchaseListener() {
+    Purchases.addCustomerInfoUpdateListener((customerInfo) {
+      _handleCustomerInfo(customerInfo);
+    });
+  }
+
+  void _handleCustomerInfo(CustomerInfo customerInfo) async {
+    // Check for 'premium_access' entitlement
+    final EntitlementInfo? entitlement =
+        customerInfo.entitlements.all['premium_access'];
+
+    if (entitlement != null && entitlement.isActive) {
+      if (!_isPaidUser) {
+        // Update Firestore only if state changes
+        if (_user != null) {
+          await _firestore.collection('users').doc(_user!.uid).set({
+            'isPaidUser': true,
+          }, SetOptions(merge: true));
+        }
       }
     }
   }
 
-  // Directly called by UI for manually adding credits (e.g. testing) or from IAP success
-  Future<void> purchaseCreditsInternal(int amount) async {
-    if (_user == null) return;
+  // Initiate Purchase (Credits handled by Webhook)
+  Future<void> buyCredits(Package package) async {
+    try {
+      await PurchaseService().purchasePackage(package);
+      // No client-side credit increment!
+      // Webhook -> Cloud Function -> Firestore
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String?> reserveCreditsAndCreateDraft(
+    List<String> scenes,
+    String theme,
+  ) async {
+    if (_user == null) return null;
+
     final userRef = _firestore.collection('users').doc(_user!.uid);
-    await _firestore.runTransaction((transaction) async {
-      final snapshot = await transaction.get(userRef);
-      if (!snapshot.exists) {
-        // Should exist, but fail safe
-        transaction.set(userRef, {
-          'credits': amount,
-          'isPaidUser': true,
-        }, SetOptions(merge: true));
-        return;
-      }
-      final currentCredits = snapshot.data()?['credits'] ?? 0;
-      transaction.update(userRef, {
-        'credits': currentCredits + amount,
-        'isPaidUser': true,
+    final draftRef = userRef.collection('drafts').doc();
+
+    try {
+      return await _firestore.runTransaction((transaction) async {
+        final userSnapshot = await transaction.get(userRef);
+        if (!userSnapshot.exists) throw Exception("User does not exist");
+
+        final currentCredits = userSnapshot.data()?['credits'] ?? 0;
+        if (currentCredits < 6) {
+          throw Exception("Insufficient credits");
+        }
+
+        // Deduct 6 credits
+        transaction.update(userRef, {'credits': currentCredits - 6});
+
+        // Create Draft
+        transaction.set(draftRef, {
+          'status': 'pending',
+          'theme': theme,
+          'scenes': scenes,
+          'pages': [],
+          'createdAt': FieldValue.serverTimestamp(),
+          'errorCount': 0,
+        });
+
+        return draftRef.id;
       });
-    });
+    } catch (e) {
+      debugPrint("Transaction failed: $e");
+      return null;
+    }
   }
 
   bool deductCredits(int amount) {
     if (_user == null) return false;
     if (_credits >= amount) {
-      // Optimistic update? Better to await.
-      // For UI responsiveness we can return true but firing firestore update is key.
       _firestore.collection('users').doc(_user!.uid).update({
         'credits': FieldValue.increment(-amount),
       });
@@ -331,6 +395,7 @@ class AppProvider with ChangeNotifier {
     required String imageUrl,
     required List<String> pages,
     required String theme,
+    String? storagePath,
   }) async {
     if (_user == null) return;
 
@@ -342,6 +407,7 @@ class AppProvider with ChangeNotifier {
       imageUrl: imageUrl,
       pages: pages,
       theme: theme,
+      storagePath: storagePath,
     );
 
     // We used to insert to list locally, now we write to Firestore
@@ -355,22 +421,14 @@ class AppProvider with ChangeNotifier {
 
   Future<void> deleteBook(String id) async {
     if (_user == null) return;
-    // We need to find the doc ID. If SavedBook.id != Firestore Doc ID, we have a problem.
-    // In _subscribeToUserBooks, I mapped doc.id to id. If we created with .add(), the ID is system gen.
-    // The SavedBook model has an 'id' field.
-    // Strategy: Use Query to find book with that internal ID, or just use the internal ID as doc ID.
-    // Let's assume we want to query by 'id' field to be safe or change save to use .doc(uuid).set().
-    // Changing save to set() is cleaner.
 
-    // But wait, in _subscribeToUserBooks I did: return SavedBook.fromJson({...data, 'id': doc.id});
-    // So the 'id' property of the object in memory IS the Document ID.
-
+    // Soft delete: update isDeleted to true
     await _firestore
         .collection('users')
         .doc(_user!.uid)
         .collection('books')
         .doc(id)
-        .delete();
+        .update({'isDeleted': true});
   }
 
   @override

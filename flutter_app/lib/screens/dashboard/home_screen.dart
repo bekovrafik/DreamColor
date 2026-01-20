@@ -43,7 +43,7 @@ class HomeScreen extends StatelessWidget {
                               fit: BoxFit.cover,
                             ),
                             border: Border.all(
-                              color: isDark ? Colors.grey[800]! : Colors.white,
+                              color: theme.dividerColor.withValues(alpha: 0.1),
                               width: 2,
                             ),
                             boxShadow: [
@@ -83,7 +83,7 @@ class HomeScreen extends StatelessWidget {
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.2,
-                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                       Text(
@@ -98,7 +98,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   GestureDetector(
-                    onTap: () => context.push('/subscription'),
+                    onTap: () => context.push('/billing'),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -313,7 +313,7 @@ class HomeScreen extends StatelessWidget {
                                   style: GoogleFonts.outfit(
                                     fontSize: 14,
                                     color: colorScheme.onSurface.withValues(
-                                      alpha: isDark ? 0.7 : 0.6,
+                                      alpha: 0.7,
                                     ),
                                     height: 1.4,
                                   ),
@@ -448,9 +448,7 @@ class HomeScreen extends StatelessWidget {
                                     Text(
                                       'Saved styles',
                                       style: GoogleFonts.outfit(
-                                        color: isDark
-                                            ? Colors.grey[400]
-                                            : Colors.grey[500],
+                                        color: colorScheme.onSurfaceVariant,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -510,9 +508,7 @@ class HomeScreen extends StatelessWidget {
                                     Text(
                                       'Your creations',
                                       style: GoogleFonts.outfit(
-                                        color: isDark
-                                            ? Colors.grey[400]
-                                            : Colors.grey[500],
+                                        color: colorScheme.onSurfaceVariant,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
                                       ),

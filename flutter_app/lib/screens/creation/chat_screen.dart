@@ -7,7 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:async';
+import 'dart:convert';
 import '../../providers/app_provider.dart';
 
 // API Key is loaded from .env
@@ -191,13 +191,79 @@ class _ChatScreenState extends State<ChatScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
       }
     } catch (e) {
-      // print("Chat Error: $e");
-      setState(
-        () => _error =
-            "Oops! I couldn't reach the magic cloud. Please try again.",
-      );
+      debugPrint("Chat Error: $e");
+      if (mounted) {
+        setState(
+          () => _error =
+              "Oops! I couldn't reach the magic cloud. Please try again.",
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleStartGeneration() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      // 1. Extract JSON Scenes from Gemini (based on chat history)
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
+      final fullContext = provider.chatHistory
+          .map(
+            (m) => "${m.role == 'user' ? 'Parent' : 'Idea Helper'}: ${m.text}",
+          )
+          .join('\n');
+
+      final prompt =
+          """
+      Based on the conversation below, plan a 6-page coloring book for ${provider.childName} with the theme ${provider.theme}. 
+      One page must be a cover. 
+      Return ONLY a valid JSON array of 6 strings, each describing a scene in detail for an AI artist.
+      
+      Conversation:
+      $fullContext
+      """;
+
+      final response = await model.generateContent([Content.text(prompt)]);
+      final text = response.text
+          ?.replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim();
+
+      if (text == null) throw Exception("Failed to plan scenes");
+
+      final List<String> scenes = List<String>.from(jsonDecode(text));
+      if (scenes.length != 6) {
+        throw Exception("Expected 6 scenes, got ${scenes.length}");
+      }
+
+      // 2. Atomic Credit Reservation and Draft Creation
+      final draftId = await provider.reserveCreditsAndCreateDraft(
+        scenes,
+        provider.theme,
+      );
+
+      if (draftId == null) {
+        throw Exception(
+          "Credit reservation failed. Please check your balance.",
+        );
+      }
+
+      if (mounted) {
+        context.push('/generating', extra: {'draftId': draftId});
+      }
+    } catch (e) {
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -219,7 +285,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => context.pop(),
+                    onPressed: () {
+                      context.pop();
+                    },
                     icon: const Icon(Icons.arrow_back),
                   ),
                   Expanded(
@@ -247,9 +315,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: ElevatedButton.icon(
-                      onPressed: () => context.push('/generating'),
+                      onPressed: _isLoading ? null : _handleStartGeneration,
                       icon: const Icon(Icons.auto_awesome, size: 16),
-                      label: const Text('Generate'),
+                      label: Text(_isLoading ? 'Planning...' : 'Generate'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Colors.white,

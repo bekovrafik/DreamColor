@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 import '../../providers/app_provider.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../services/purchase_service.dart';
@@ -568,7 +568,7 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isLoading = true;
-  List<ProductDetails> _products = [];
+  List<Package> _packages = [];
 
   @override
   void initState() {
@@ -580,23 +580,26 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final service = PurchaseService();
     // Re-trigger init to ensure connection
     // Note: service.products might already be populated if previously fetched
-    if (service.products.isEmpty) {
+    if (service.packages.isEmpty) {
       await service.init();
     }
 
     if (mounted) {
       setState(() {
-        _products = service.products;
+        _packages = service.packages;
         _isLoading = false;
       });
     }
   }
 
-  Future<void> _buyProduct(ProductDetails? product) async {
-    if (product == null) return;
+  Future<void> _buyProduct(Package? package) async {
+    if (package == null) return;
     setState(() => _isLoading = true);
     try {
-      await PurchaseService().buyConsumable(product);
+      await Provider.of<AppProvider>(
+        context,
+        listen: false,
+      ).buyCredits(package);
       // Success is handled by stream in AppProvider
       // We can pop or show success via listener, but for now we wait a bit or just let the stream handle it.
       // Ideally we listen to a stream here to know when to stop loading, but simple approach:
@@ -619,19 +622,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final hasProducts = _products.isNotEmpty;
+    final hasPackages = _packages.isNotEmpty;
 
-    ProductDetails? partyProduct;
-    ProductDetails? singleProduct;
+    Package? partyPackage;
+    Package? singlePackage;
 
-    if (hasProducts) {
-      partyProduct = _products.firstWhere(
-        (p) => p.id == PurchaseService.productExplorerPack,
-        orElse: () => _products.first,
+    if (hasPackages) {
+      partyPackage = _packages.firstWhere(
+        (p) => p.storeProduct.identifier.contains(
+          PurchaseService.productExplorerPack,
+        ),
+        orElse: () => _packages.first,
       );
-      singleProduct = _products.firstWhere(
-        (p) => p.id == PurchaseService.productSingleAdventure,
-        orElse: () => _products.last,
+      singlePackage = _packages.firstWhere(
+        (p) => p.storeProduct.identifier.contains(
+          PurchaseService.productSingleAdventure,
+        ),
+        orElse: () => _packages.last,
       );
     }
 
@@ -700,12 +707,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   const SizedBox(height: 32),
 
-                  if (!hasProducts)
+                  if (!hasPackages)
                     const Center(
                       child: Text("Connecting to Store... (Check Product IDs)"),
                     ),
 
-                  if (hasProducts) ...[
+                  if (hasPackages) ...[
                     // Party Pack
                     _buildPackageCard(
                       context,
@@ -717,10 +724,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         "All Themes Unlocked",
                         "Export High-Quality PDFs",
                       ],
-                      price: partyProduct?.price ?? "\$29.99",
+                      price:
+                          partyPackage?.storeProduct.priceString ?? "\$29.99",
                       isPopular: true,
                       mainColor: Theme.of(context).colorScheme.primary,
-                      onTap: () => _buyProduct(partyProduct),
+                      onTap: () => _buyProduct(partyPackage),
                     ),
                     const SizedBox(height: 16),
 
@@ -735,11 +743,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         "Unlock Photo Upload",
                         "Print-Ready PDF",
                       ],
-                      price: singleProduct?.price ?? "\$2.99",
+                      price:
+                          singlePackage?.storeProduct.priceString ?? "\$2.99",
                       isPopular: false,
                       mainColor: Theme.of(context).cardColor,
                       isSecondary: true,
-                      onTap: () => _buyProduct(singleProduct),
+                      onTap: () => _buyProduct(singlePackage),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -803,7 +812,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   TextButton(
                     onPressed: () async {
                       try {
-                        await InAppPurchase.instance.restorePurchases();
+                        await Purchases.restorePurchases();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(

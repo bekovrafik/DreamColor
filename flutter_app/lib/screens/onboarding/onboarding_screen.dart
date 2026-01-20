@@ -61,9 +61,7 @@ class OnboardingScreen extends StatelessWidget {
                               ),
                             ],
                             image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://lh3.googleusercontent.com/aida-public/AB6AXuBrg0IdBpBxYcTZ9eiFf_Mm5CxSHqfyUKEUe0eJ74RW0bn_G0d0rgaNhVWQA-sPmHIKWPZLGdRqTnfNECQpQUowYB78IZj2edNS9V-d52DTcbxC2M2yUPTREwXfIGYd1ZD9LpB67I7wj077HQjEZSOZo38orh6RPHZViycJ9WONgrXqm-GOVXDbbpO8ZPC4JkCQXS81zW5j2_Vtj9MBNxdyCxrkB2pturiESx6wDAbHWlbpBTlRY36zUEeXSt3eQULAKMIRWbTj_j4',
-                              ),
+                              image: AssetImage('assets/images/onboarding.png'),
                               fit: BoxFit.cover,
                             ),
                           ),

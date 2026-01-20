@@ -5,6 +5,8 @@ class SavedBook {
   final String imageUrl; // Cover image
   final List<String> pages; // All pages
   final String theme;
+  final String? storagePath;
+  final bool isDeleted;
 
   SavedBook({
     required this.id,
@@ -13,6 +15,8 @@ class SavedBook {
     required this.imageUrl,
     required this.pages,
     required this.theme,
+    this.storagePath,
+    this.isDeleted = false,
   });
 
   Map<String, dynamic> toJson() {
@@ -23,6 +27,8 @@ class SavedBook {
       'imageUrl': imageUrl,
       'pages': pages,
       'theme': theme,
+      'storagePath': storagePath,
+      'isDeleted': isDeleted,
     };
   }
 
@@ -34,6 +40,8 @@ class SavedBook {
       imageUrl: json['imageUrl'],
       pages: List<String>.from(json['pages'] ?? []),
       theme: json['theme'],
+      storagePath: json['storagePath'],
+      isDeleted: json['isDeleted'] ?? false,
     );
   }
 }
