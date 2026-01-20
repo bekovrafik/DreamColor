@@ -1,0 +1,63 @@
+{
+  "project_info": {
+    "project_number": "75533475992",
+    "firebase_url": "https://dreamcolor-1fd94-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "dreamcolor-1fd94",
+    "storage_bucket": "dreamcolor-1fd94.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:75533475992:android:c2b6c41d7c94440b37b0ed",
+        "android_client_info": {
+          "package_name": "com.dreamcolor.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "75533475992-eru7udl57tjb4at9q4vom0ej5oa3egtl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dreamcolor.app",
+            "certificate_hash": "f220f1e1a94be9ef4c06d5774c4dbb45938cb70e"
+          }
+        },
+        {
+          "client_id": "75533475992-p68rcee1kd5bu9d2a1gchse1iuf11fr5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.dreamcolor.app",
+            "certificate_hash": "a4ea4561139e90a7b28669dbee90aecda9bb15f1"
+          }
+        },
+        {
+          "client_id": "75533475992-q3345ad6d50ttberm9gocbikpskrcl9s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTDMXWyTLaXR7KmOfo1IhRH7DZbOTyezc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "75533475992-q3345ad6d50ttberm9gocbikpskrcl9s.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "75533475992-2dp3o2lk1btnd0upa0dohtrr5tuc0l1a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.dreamcolor.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
