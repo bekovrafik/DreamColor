@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../../providers/app_provider.dart';
 import '../../services/purchase_service.dart';
 
 class BillingScreen extends StatelessWidget {
@@ -48,7 +46,7 @@ class BillingScreen extends StatelessWidget {
                   _buildPlanCard(
                     context,
                     title: 'Single Adventure',
-                    price: '$2.99',
+                    price: r'$2.99',
                     credits: '6 Credits',
                     description: 'Perfect for 1 Full Book',
                     features: [
@@ -57,13 +55,14 @@ class BillingScreen extends StatelessWidget {
                       'Access to all Themes',
                       'Unlimited Gallery Space',
                     ],
-                    onPressed: () => _handlePurchase(context, 'single_adventure'),
+                    onPressed: () =>
+                        _handlePurchase(context, 'single_adventure'),
                   ),
                   const SizedBox(height: 24),
                   _buildPlanCard(
                     context,
                     title: 'Explorer Pack',
-                    price: '$29.99',
+                    price: r'$29.99',
                     credits: '30 Credits',
                     description: 'Perfect for 5 Full Books',
                     features: [
@@ -88,8 +87,11 @@ class BillingScreen extends StatelessWidget {
   void _handlePurchase(BuildContext context, String productId) async {
     final purchaseService = PurchaseService();
     final products = purchaseService.products;
-    final product = products.isNotEmpty 
-        ? products.firstWhere((p) => p.id == productId, orElse: () => throw Exception('Product not found'))
+    final product = products.isNotEmpty
+        ? products.firstWhere(
+            (p) => p.id == productId,
+            orElse: () => throw Exception('Product not found'),
+          )
         : null;
 
     try {
@@ -97,14 +99,16 @@ class BillingScreen extends StatelessWidget {
         await purchaseService.buyConsumable(product);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connecting to store... Please try again.')),
+          const SnackBar(
+            content: Text('Connecting to store... Please try again.'),
+          ),
         );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Purchase failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Purchase failed: $e')));
       }
     }
   }
@@ -195,31 +199,30 @@ class BillingScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   description,
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
+                  style: GoogleFonts.outfit(fontSize: 14, color: Colors.grey),
                 ),
                 const Divider(height: 32),
-                ...features.map((f) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          f,
-                          style: GoogleFonts.outfit(fontSize: 14),
+                ...features.map(
+                  (f) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            f,
+                            style: GoogleFonts.outfit(fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                )),
+                ),
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -285,7 +288,12 @@ class PlanComparisonTable extends StatelessWidget {
               style: GoogleFonts.outfit(fontWeight: FontWeight.w500),
             ),
           ),
-          Expanded(child: Text(free, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+          Expanded(
+            child: Text(
+              free,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ),
           Expanded(
             child: Text(
               paid,
