@@ -188,8 +188,104 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: Colors.grey.shade200)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'OR',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade400,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: Colors.grey.shade200)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildSocialButton(
+                context,
+                label: 'Continue with Google',
+                isGoogle: true,
+                onTap: () async {
+                  try {
+                    await Provider.of<AppProvider>(
+                      context,
+                      listen: false,
+                    ).signInWithGoogle();
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Google Sign-In failed: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(
+    BuildContext context, {
+    required String label,
+    bool isGoogle = false,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isGoogle)
+              Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [Colors.yellow, Colors.red, Colors.blue],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: const Center(
+                  child: Text(
+                    'G',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+          ],
         ),
       ),
     );

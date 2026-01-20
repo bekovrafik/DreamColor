@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:uuid/uuid.dart';
 import '../models/book.dart';
 import '../models/chat_message.dart';
@@ -46,6 +47,11 @@ class AppProvider with ChangeNotifier {
   List<ChatMessage> get chatHistory => _chatHistory;
   List<SavedBook> get savedBooks => _savedBooks;
   bool get isLoading => _isLoading;
+
+  // Permission Getters
+  bool get canExportPdf => _isPaidUser;
+  bool get canUploadPhotos => _isPaidUser;
+  bool get canAccessAllThemes => _isPaidUser;
 
   AppProvider() {
     _init();
@@ -155,6 +161,37 @@ class AppProvider with ChangeNotifier {
 
   Future<void> logout() async {
     await _auth.signOut();
+    await GoogleSignIn().signOut();
+  }
+
+  Future<void> signInWithGoogle() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return;
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final cred = await _auth.signInWithCredential(credential);
+
+      // If new user, create doc
+      if (cred.additionalUserInfo?.isNewUser ?? false) {
+        await _firestore.collection('users').doc(cred.user!.uid).set({
+          'childName': googleUser.displayName ?? '',
+          'email': googleUser.email,
+          'credits': 0,
+          'isPaidUser': false,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastFreeGenerationTime': 0,
+        });
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   // --- Logic ---

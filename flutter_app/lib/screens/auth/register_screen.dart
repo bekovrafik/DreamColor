@@ -343,7 +343,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
             : Colors.transparent,
       ),
       child: InkWell(
-        onTap: () {},
+        onTap: () async {
+          try {
+            await Provider.of<AppProvider>(
+              context,
+              listen: false,
+            ).signInWithGoogle();
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Google Sign-In failed: $e')),
+              );
+            }
+          }
+        },
         borderRadius: BorderRadius.circular(28),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

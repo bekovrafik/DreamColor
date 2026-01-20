@@ -40,8 +40,8 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
 
   Future<void> _pickImage() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    if (!provider.isPaidUser) {
-      context.push('/subscription');
+    if (!provider.canUploadPhotos) {
+      context.push('/billing');
       return;
     }
 
@@ -67,7 +67,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
             ),
           ),
         );
-        context.push('/subscription');
+        context.push('/billing');
         return;
       }
     }
@@ -79,7 +79,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("You need 6 credits for a full book!")),
         );
-        context.push('/subscription');
+        context.push('/billing');
         return;
       }
 
@@ -260,7 +260,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                           ),
                           if (!appProvider.isPaidUser)
                             GestureDetector(
-                              onTap: () => context.push('/subscription'),
+                              onTap: () => context.push('/billing'),
                               child: Text(
                                 "Unlock All",
                                 style: GoogleFonts.outfit(
@@ -326,7 +326,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextField(
-                        enabled: appProvider.isPaidUser,
+                        enabled: appProvider.canAccessAllThemes,
                         onChanged: (val) => appProvider.setTheme(val),
                         decoration: InputDecoration(
                           hintText: appProvider.isPaidUser
@@ -601,7 +601,7 @@ class _NewAdventureScreenState extends State<NewAdventureScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: () => context.push('/subscription'),
+                        onPressed: () => context.push('/billing'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Theme.of(
                             context,

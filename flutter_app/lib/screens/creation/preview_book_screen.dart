@@ -162,7 +162,38 @@ class _PreviewBookScreenState extends State<PreviewBookScreen> {
                     ),
                   ),
                   TextButton.icon(
-                    onPressed: _exportPdf,
+                    onPressed: () {
+                      final provider = Provider.of<AppProvider>(
+                        context,
+                        listen: false,
+                      );
+                      if (provider.canExportPdf) {
+                        _exportPdf();
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text("Premium Feature"),
+                            content: const Text(
+                              "PDF Export is available for Paid Users. Unlock now to print your creations!",
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text("Later"),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  context.push('/billing');
+                                },
+                                child: const Text("Unlock"),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
                     icon: const Icon(Icons.picture_as_pdf, color: Colors.blue),
                     label: const Text(
                       "Export",

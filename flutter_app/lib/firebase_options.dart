@@ -41,12 +41,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyD6eEAv8VPd4NBhtinaXZHBAU8YdhsC3KM',
-    appId: '1:26925541596:web:8fe3197945a3c35cd02c19',
-    messagingSenderId: '26925541596',
-    projectId: 'dreamcolor-3ba09',
-    authDomain: 'dreamcolor-3ba09.firebaseapp.com',
-    storageBucket: 'dreamcolor-3ba09.firebasestorage.app',
+    apiKey: 'AIzaSyCTDMXWyTLaXR7KmOfo1IhRH7DZbOTyezc',
+    appId: '1:75533475992:web:8fe3197945a3c35cd02c19',
+    messagingSenderId: '75533475992',
+    projectId: 'dreamcolor-1fd94',
+    authDomain: 'dreamcolor-1fd94.firebaseapp.com',
+    storageBucket: 'dreamcolor-1fd94.firebasestorage.app',
     measurementId: 'G-B0N7WVK1CL',
   );
 
@@ -77,12 +77,12 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyD6eEAv8VPd4NBhtinaXZHBAU8YdhsC3KM',
-    appId: '1:26925541596:web:7fdfb30cc52dee50d02c19',
-    messagingSenderId: '26925541596',
-    projectId: 'dreamcolor-3ba09',
-    authDomain: 'dreamcolor-3ba09.firebaseapp.com',
-    storageBucket: 'dreamcolor-3ba09.firebasestorage.app',
+    apiKey: 'AIzaSyCTDMXWyTLaXR7KmOfo1IhRH7DZbOTyezc',
+    appId: '1:75533475992:web:7fdfb30cc52dee50d02c19',
+    messagingSenderId: '75533475992',
+    projectId: 'dreamcolor-1fd94',
+    authDomain: 'dreamcolor-1fd94.firebaseapp.com',
+    storageBucket: 'dreamcolor-1fd94.firebasestorage.app',
     measurementId: 'G-ZJG5PE7TEX',
   );
 }

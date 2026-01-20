@@ -6,12 +6,12 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:audioplayers/audioplayers.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:async';
 import '../../providers/app_provider.dart';
 
-// IMPORTANT: Ideally, this should be in an environment variable or secure storage.
-// For this demo/conversion, we assume the API Key is provided or configured.
-const String _apiKey = 'AIzaSyAqXp3zlh8ccC-_U0E-yvhYqnunsue5OTc';
+// API Key is loaded from .env
+final String _apiKey = dotenv.get('GEMINI_API_KEY');
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
